@@ -1,0 +1,80 @@
+import { AppShell } from "@/components/layout/app-shell";
+import { articleIdeas, reviews } from "@/lib/mock-data";
+
+export default function ContentPage() {
+  return (
+    <AppShell
+      title="محتوا و رضایت مشتریان"
+      description="رضایت‌های مشتریان را پیش از انتشار بررسی و از داده‌های مجاز برای محتوای مفید استفاده کنید."
+    >
+      <div className="content-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>رضایت‌های اخیر</h2>
+              <p>انتشار عمومی فقط با رضایت مشتری انجام می‌شود.</p>
+            </div>
+            <button className="text-link" type="button">
+              مشاهده همه
+            </button>
+          </div>
+          <div className="review-list">
+            {reviews.map((review) => (
+              <article className="review-item" key={review.name}>
+                <div className="review-meta">
+                  <span className="avatar small">{review.name[0]}</span>
+                  <div>
+                    <strong>{review.name}</strong>
+                    <small>
+                      {review.route} · {review.date}
+                    </small>
+                  </div>
+                  <span className="score">★ {review.score}</span>
+                </div>
+                <p>«{review.text}»</p>
+                <div className="review-footer">
+                  <span className={`status-pill ${review.published ? "success" : "warning"}`}>
+                    {review.published ? "منتشر شده" : "در انتظار تأیید"}
+                  </span>
+                  <button className="text-link" type="button">
+                    بررسی
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>ایده‌های محتوا</h2>
+              <p>پیشنهاد بر اساس داده‌های غیرشخصی و تأییدشده</p>
+            </div>
+            <button className="primary-button" type="button">
+              ＋ محتوای جدید
+            </button>
+          </div>
+          <div className="idea-list">
+            {articleIdeas.map((idea) => (
+              <article className="idea-item" key={idea.title}>
+                <span className="idea-icon">✦</span>
+                <div>
+                  <strong>{idea.title}</strong>
+                  <small>{idea.source}</small>
+                </div>
+                <span className="status-pill info">{idea.state}</span>
+              </article>
+            ))}
+          </div>
+          <div className="privacy-note">
+            <strong>حریم خصوصی محتوا</strong>
+            <p>
+              نام کامل، شماره تماس، نشانی دقیق و جزئیات خصوصی بار هرگز در پیش‌نویس یا انتشار محتوا
+              استفاده نمی‌شود.
+            </p>
+          </div>
+        </section>
+      </div>
+    </AppShell>
+  );
+}

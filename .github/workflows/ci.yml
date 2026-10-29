@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  laravel:
+    name: Install, build, lint, migrate and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: barrah_ci
+          MYSQL_USER: barrah
+          MYSQL_PASSWORD: ci-password
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, intl, pdo_mysql, pdo_sqlite, bcmath, gd, zip, exif
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.json', 'composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json', 'package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      # The repository does not commit lockfiles yet. When they are missing,
+      # dependencies are resolved here and the generated lockfiles are uploaded
+      # as artifacts so they can be reviewed and committed.
+      - name: Install Composer dependencies
+        run: |
+          if [ -f composer.lock ]; then
+            composer install --no-interaction --prefer-dist --no-progress
+          else
+            composer update --no-interaction --prefer-dist --no-progress
+          fi
+
+      - name: Install npm dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Upload lockfiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: lockfiles
+          path: |
+            composer.lock
+            package-lock.json
+          retention-days: 14
+
+      - name: Prepare environment file
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Migrate and seed MySQL
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: barrah_ci
+          DB_USERNAME: barrah
+          DB_PASSWORD: ci-password
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --force
+
+      # phpunit.xml runs the suite on in-memory SQLite.
+      - name: Run tests
+        run: php artisan test
+
+      # Runs after tests so a newly published advisory does not hide build or
+      # test results. Still a failing gate.
+      - name: Audit Composer dependencies
+        run: composer audit

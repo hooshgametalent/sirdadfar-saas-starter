@@ -117,9 +117,13 @@ jobs:
           DB_DATABASE: barrah_ci
           DB_USERNAME: barrah
           DB_PASSWORD: ci-password
+          # Exercise the order lifecycle (transactions and row locks) on MySQL.
+          DEMO_SEED: "true"
         run: |
           php artisan migrate --force
           php artisan db:seed --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
 
       # phpunit.xml runs the suite on in-memory SQLite.
       - name: Run tests

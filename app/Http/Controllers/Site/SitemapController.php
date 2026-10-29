@@ -14,7 +14,7 @@ class SitemapController extends Controller
 {
     public function index(): Response
     {
-        $xml = new XMLWriter();
+        $xml = new XMLWriter;
         $xml->openMemory();
         $xml->startDocument('1.0', 'UTF-8');
         $xml->startElement('urlset');

@@ -13,7 +13,7 @@ trait CreatesFreightData
 {
     protected function fakeSms(): FakeSmsSender
     {
-        $fake = new FakeSmsSender();
+        $fake = new FakeSmsSender;
 
         $this->app->instance(SmsSender::class, $fake);
 

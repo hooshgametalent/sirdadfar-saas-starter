@@ -41,7 +41,7 @@ class OrderLifecycle
         }
 
         return DB::transaction(function () use ($shipper, $data) {
-            $order = new Order();
+            $order = new Order;
             $order->fill(Arr::only($data, $order->getFillable()));
             $order->shipper_id = $shipper->getKey();
             $order->status = OrderStatus::PendingReview;

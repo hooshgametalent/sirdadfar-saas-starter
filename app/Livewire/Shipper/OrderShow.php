@@ -139,7 +139,9 @@ class OrderShow extends Component
                 'driver.driverProfile:id,user_id,vehicle_type_id',
                 'driver.driverProfile.vehicleType:id,name',
             ])
-            ->whereIn('status', [OfferStatus::Pending->value, OfferStatus::Accepted->value])
+            ->where(fn ($query) => $query
+                ->where('status', OfferStatus::Accepted->value)
+                ->orWhere(fn ($pending) => $pending->pending()->fromEligibleDrivers()))
             ->orderBy('price')
             ->get();
 

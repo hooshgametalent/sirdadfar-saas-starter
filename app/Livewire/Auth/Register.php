@@ -4,12 +4,15 @@ namespace App\Livewire\Auth;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Support\Jalali;
 use App\Support\Mobile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -24,6 +27,15 @@ use Livewire\Component;
 #[Title('ثبت‌نام')]
 class Register extends Component
 {
+    /**
+     * Registration attempts allowed per IP address within DECAY_SECONDS.
+     * Every submit counts, successful or not, to slow scripted account
+     * creation and squatting on mobile numbers.
+     */
+    public const MAX_ATTEMPTS = 5;
+
+    public const DECAY_SECONDS = 600;
+
     public string $name = '';
 
     public string $mobile = '';
@@ -44,6 +56,18 @@ class Register extends Component
 
     public function register(): void
     {
+        $key = $this->throttleKey();
+
+        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+            $seconds = RateLimiter::availableIn($key);
+
+            throw ValidationException::withMessages([
+                'mobile' => 'تعداد درخواست‌های ثبت‌نام از این دستگاه زیاد است. لطفاً '.Jalali::toPersianDigits($seconds).' ثانیه دیگر دوباره تلاش کنید.',
+            ]);
+        }
+
+        RateLimiter::hit($key, self::DECAY_SECONDS);
+
         $this->mobile = Mobile::normalize($this->mobile);
 
         $data = $this->validate([
@@ -70,5 +94,10 @@ class Register extends Component
     public function render(): View
     {
         return view('livewire.auth.register');
+    }
+
+    protected function throttleKey(): string
+    {
+        return 'register|'.request()->ip();
     }
 }

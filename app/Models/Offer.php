@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\DriverVerificationStatus;
 use App\Enums\OfferStatus;
+use App\Enums\UserRole;
 use Database\Factories\OfferFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,6 +47,19 @@ class Offer extends Model
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', OfferStatus::Pending->value);
+    }
+
+    /**
+     * Offers whose driver is still active and verified, so the offer can
+     * still be accepted. Mirrors the checks in OfferService::submit().
+     */
+    public function scopeFromEligibleDrivers(Builder $query): Builder
+    {
+        return $query->whereHas('driver', fn (Builder $driver): Builder => $driver
+            ->where('is_active', true)
+            ->where('role', UserRole::Driver->value)
+            ->whereHas('driverProfile', fn (Builder $profile): Builder => $profile
+                ->where('verification_status', DriverVerificationStatus::Approved->value)));
     }
 
     /**

@@ -23,14 +23,21 @@
                     <dt class="text-slate-500">صاحب بار</dt>
                     <dd class="mt-1">{{ $order->shipper?->name }}</dd>
                 </div>
-                <div>
-                    <dt class="text-slate-500">شماره تماس صاحب بار</dt>
-                    <dd class="mt-1" dir="ltr"><a class="link" href="tel:{{ $order->shipper?->mobile }}">{{ $order->shipper?->mobile }}</a></dd>
-                </div>
-                <div>
-                    <dt class="text-slate-500">نشانی‌ها</dt>
-                    <dd class="mt-1">مبدأ: {{ $order->origin_address }}<br>مقصد: {{ $order->destination_address }}</dd>
-                </div>
+                @if (\App\Livewire\Driver\MyJobs::showsShipperContact($order))
+                    <div>
+                        <dt class="text-slate-500">شماره تماس صاحب بار</dt>
+                        <dd class="mt-1" dir="ltr"><a class="link" href="tel:{{ $order->shipper?->mobile }}">{{ $order->shipper?->mobile }}</a></dd>
+                    </div>
+                    <div>
+                        <dt class="text-slate-500">نشانی‌ها</dt>
+                        <dd class="mt-1">مبدأ: {{ $order->origin_address }}<br>مقصد: {{ $order->destination_address }}</dd>
+                    </div>
+                @else
+                    <div class="sm:col-span-2">
+                        <dt class="text-slate-500">اطلاعات تماس و نشانی‌ها</dt>
+                        <dd class="mt-1 text-slate-600">پس از پایان یا لغو سفر، شماره تماس و نشانی‌های صاحب بار نمایش داده نمی‌شود.</dd>
+                    </div>
+                @endif
             </dl>
 
             <div class="mt-4 flex flex-wrap gap-2">

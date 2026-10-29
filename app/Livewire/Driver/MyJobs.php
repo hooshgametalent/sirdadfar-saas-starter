@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Driver;
 
+use App\Enums\OrderStatus;
 use App\Exceptions\FreightException;
 use App\Models\Order;
 use App\Models\User;
@@ -14,8 +15,10 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Orders assigned to the signed in driver. Shipper contact details are
- * shown here because the order is assigned to this driver.
+ * Orders assigned to the signed in driver. Shipper contact details and
+ * street addresses are shown only while the job is in progress (assigned,
+ * loaded, in transit). Once delivered or cancelled the driver keeps the
+ * job summary but no longer sees the shipper's mobile or addresses.
  */
 #[Layout('layouts.panel')]
 #[Title('سفرهای من')]
@@ -24,6 +27,8 @@ class MyJobs extends Component
     use WithPagination;
 
     public const STEPS = ['loaded', 'in_transit', 'delivered'];
+
+    public const CONTACT_STATUSES = [OrderStatus::Assigned, OrderStatus::Loaded, OrderStatus::InTransit];
 
     public ?string $successMessage = null;
 
@@ -65,6 +70,11 @@ class MyJobs extends Component
                 ->latest('updated_at')
                 ->paginate(10),
         ]);
+    }
+
+    public static function showsShipperContact(Order $order): bool
+    {
+        return in_array($order->status, self::CONTACT_STATUSES, true);
     }
 
     protected function user(): User

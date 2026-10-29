@@ -90,4 +90,35 @@ class OfferService
             return $offer;
         });
     }
+
+    /**
+     * Withdraw every pending offer of a driver who is no longer eligible
+     * (deactivated or verification rejected). Returns the number of offers
+     * withdrawn. The driver can submit again once eligible.
+     */
+    public function withdrawAllPendingFor(User $driver, ?User $actor = null, string $reason = 'driver_ineligible'): int
+    {
+        return DB::transaction(function () use ($driver, $actor, $reason) {
+            $ids = Offer::query()
+                ->where('driver_id', $driver->getKey())
+                ->pending()
+                ->lockForUpdate()
+                ->pluck('id');
+
+            if ($ids->isEmpty()) {
+                return 0;
+            }
+
+            Offer::query()
+                ->whereKey($ids->all())
+                ->update(['status' => OfferStatus::Withdrawn->value, 'updated_at' => now()]);
+
+            $this->audit->log('offer.withdrawn_for_driver', $driver, [
+                'offer_ids' => $ids->all(),
+                'reason' => $reason,
+            ], $actor);
+
+            return $ids->count();
+        });
+    }
 }

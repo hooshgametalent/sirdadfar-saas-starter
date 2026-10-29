@@ -20,6 +20,7 @@ class DriverVerificationService
     public function __construct(
         protected AuditLogger $audit,
         protected SmsSender $sms,
+        protected OfferService $offers,
     ) {
         //
     }
@@ -61,6 +62,12 @@ class DriverVerificationService
             ])->save();
 
             $this->audit->log('driver.rejected', $profile, ['user_id' => $profile->user_id, 'reason' => trim($reason)], $staff);
+
+            // A rejected driver can no longer be assigned, so their pending
+            // offers must not stay acceptable for shippers.
+            if ($profile->user !== null) {
+                $this->offers->withdrawAllPendingFor($profile->user, $staff, 'driver_rejected');
+            }
         });
 
         $this->notify($profile, 'مدارک راننده شما در بارراه تأیید نشد. دلیل: '.trim($reason));

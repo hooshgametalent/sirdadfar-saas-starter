@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DriverVerificationStatus;
 use App\Enums\OfferStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\FreightException;
@@ -11,6 +12,7 @@ use App\Models\Offer;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\User;
+use App\Services\DriverVerificationService;
 use App\Services\OfferService;
 use App\Services\OrderLifecycle;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -226,5 +228,66 @@ class OrderLifecycleTest extends TestCase
         $lifecycle->cancel($order, User::factory()->operator()->create(), 'بار منتفی شد');
 
         $this->assertSame(OfferStatus::Rejected, $offer->fresh()->status);
+    }
+
+    public function test_offer_of_a_deactivated_or_unverified_driver_cannot_be_accepted(): void
+    {
+        $this->fakeSms();
+        $lifecycle = app(OrderLifecycle::class);
+        $offers = app(OfferService::class);
+        $order = Order::factory()->openForOffers()->create();
+
+        $deactivated = $this->approvedDriver();
+        $first = $offers->submit($deactivated, $order, 25000000);
+        $deactivated->forceFill(['is_active' => false])->save();
+
+        $unverified = $this->approvedDriver();
+        $second = $offers->submit($unverified, $order, 26000000);
+        $unverified->driverProfile->forceFill(['verification_status' => DriverVerificationStatus::Rejected])->save();
+
+        foreach ([$first, $second] as $offer) {
+            $this->assertThrows(fn () => $lifecycle->acceptOffer($offer, $order->shipper), FreightException::class);
+            $this->assertSame(OfferStatus::Pending, $offer->fresh()->status);
+        }
+
+        $this->assertSame(OrderStatus::OpenForOffers, $order->fresh()->status);
+        $this->assertNull($order->fresh()->assigned_driver_id);
+        $this->assertSame(0, $order->statusHistories()->where('to_status', OrderStatus::Assigned->value)->count());
+    }
+
+    public function test_withdraw_all_pending_for_driver_only_touches_pending_offers(): void
+    {
+        $this->fakeSms();
+        $offers = app(OfferService::class);
+        $driver = $this->approvedDriver();
+        $operator = User::factory()->operator()->create();
+
+        $pending = $offers->submit($driver, Order::factory()->openForOffers()->create(), 25000000);
+        $accepted = $offers->submit($driver, $assignedOrder = Order::factory()->openForOffers()->create(), 26000000);
+        app(OrderLifecycle::class)->acceptOffer($accepted, $assignedOrder->shipper);
+        $otherDriverOffer = $offers->submit($this->approvedDriver(), Order::factory()->openForOffers()->create(), 27000000);
+
+        $this->assertSame(1, $offers->withdrawAllPendingFor($driver, $operator, 'driver_rejected'));
+        $this->assertSame(0, $offers->withdrawAllPendingFor($driver, $operator));
+
+        $this->assertSame(OfferStatus::Withdrawn, $pending->fresh()->status);
+        $this->assertSame(OfferStatus::Accepted, $accepted->fresh()->status);
+        $this->assertSame(OfferStatus::Pending, $otherDriverOffer->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'offer.withdrawn_for_driver',
+            'auditable_id' => $driver->id,
+            'user_id' => $operator->id,
+        ]);
+    }
+
+    public function test_rejecting_a_driver_withdraws_their_pending_offers(): void
+    {
+        $this->fakeSms();
+        $driver = $this->approvedDriver();
+        $offer = app(OfferService::class)->submit($driver, Order::factory()->openForOffers()->create(), 25000000);
+
+        app(DriverVerificationService::class)->reject($driver->driverProfile, User::factory()->operator()->create(), 'مدارک منقضی شده است.');
+
+        $this->assertSame(OfferStatus::Withdrawn, $offer->fresh()->status);
     }
 }

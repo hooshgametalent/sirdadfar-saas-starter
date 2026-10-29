@@ -4,6 +4,7 @@ namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
 use App\Services\AuditLogger;
+use App\Services\OfferService;
 use Filament\Resources\Pages\EditRecord;
 
 class EditUser extends EditRecord
@@ -41,6 +42,16 @@ class EditUser extends EditRecord
 
         if (array_key_exists('is_active', $changes)) {
             $audit->log($this->record->is_active ? 'user.activated' : 'user.deactivated', $this->record);
+        }
+
+        // A deactivated user, or one who is no longer a driver, cannot be
+        // assigned any more, so their pending offers are withdrawn.
+        if ((array_key_exists('is_active', $changes) || array_key_exists('role', $changes))
+            && (! $this->record->is_active || ! $this->record->isDriver())) {
+            app(OfferService::class)->withdrawAllPendingFor(
+                $this->record,
+                reason: $this->record->is_active ? 'role_changed' : 'user_deactivated',
+            );
         }
 
         if (array_key_exists('password', $changes)) {

@@ -71,6 +71,7 @@ class OrderActions
                     ->required()
                     ->options(fn (Order $record): array => $record->offers()
                         ->pending()
+                        ->fromEligibleDrivers()
                         ->with('driver:id,name')
                         ->orderBy('price')
                         ->get()

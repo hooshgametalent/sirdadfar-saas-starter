@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Services\OfferService;
+use App\Services\OrderLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -318,5 +319,38 @@ class DriverPanelTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(OrderStatus::Assigned, $order->fresh()->status);
+    }
+
+    public function test_shipper_contact_is_hidden_once_the_job_is_cancelled_or_delivered(): void
+    {
+        $this->fakeSms();
+        $driver = $this->approvedDriver();
+        $shipper = User::factory()->shipper()->create(['mobile' => '09007770011']);
+        $order = Order::factory()->assignedTo($driver)->create([
+            'shipper_id' => $shipper->id,
+            'origin_address' => 'نشانی آزمایشی انبار مبدأ',
+        ]);
+
+        Livewire::actingAs($driver)
+            ->test(MyJobs::class)
+            ->assertSee('09007770011')
+            ->assertSee('نشانی آزمایشی انبار مبدأ');
+
+        app(OrderLifecycle::class)->cancel($order, User::factory()->operator()->create(), 'لغو توسط پشتیبانی');
+
+        Livewire::actingAs($driver)
+            ->test(MyJobs::class)
+            ->assertSee($order->reference)
+            ->assertDontSee('09007770011')
+            ->assertDontSee('نشانی آزمایشی انبار مبدأ');
+
+        $delivered = Order::factory()->delivered($driver)->create([
+            'shipper_id' => User::factory()->shipper()->create(['mobile' => '09007770022'])->id,
+        ]);
+
+        Livewire::actingAs($driver)
+            ->test(MyJobs::class)
+            ->assertSee($delivered->reference)
+            ->assertDontSee('09007770022');
     }
 }

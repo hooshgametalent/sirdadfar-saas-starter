@@ -224,4 +224,29 @@ class AuthTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_registration_is_throttled_per_ip(): void
+    {
+        for ($attempt = 0; $attempt < Register::MAX_ATTEMPTS; $attempt++) {
+            Livewire::test(Register::class)
+                ->set('name', 'کاربر نمونه')
+                ->set('mobile', '12345')
+                ->call('register')
+                ->assertHasErrors('mobile');
+        }
+
+        $component = Livewire::test(Register::class)
+            ->set('name', 'کاربر نمونه')
+            ->set('mobile', '09120000099')
+            ->set('password', 'secret-password')
+            ->set('password_confirmation', 'secret-password')
+            ->set('role', 'shipper')
+            ->call('register')
+            ->assertHasErrors('mobile')
+            ->assertNoRedirect();
+
+        $this->assertStringContainsString('ثانیه دیگر', $component->errors()->first('mobile'));
+        $this->assertDatabaseMissing('users', ['mobile' => '09120000099']);
+        $this->assertGuest();
+    }
 }

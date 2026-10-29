@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\DriverVerificationStatus;
+use App\Enums\OfferStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentDirection;
 use App\Enums\PaymentStatus;
@@ -411,5 +412,36 @@ class AdminPanelTest extends TestCase
             ->assertOk()
             ->assertSee('در انتظار پیشنهاد')
             ->assertSee('رانندگان در انتظار تأیید');
+    }
+
+    public function test_deactivating_a_driver_withdraws_pending_offers_and_hides_them_from_assignment(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $order = Order::factory()->openForOffers()->create();
+        $driver = $this->approvedDriver();
+        $offer = Offer::factory()->create(['order_id' => $order->id, 'driver_id' => $driver->id]);
+
+        Livewire::test(EditUser::class, ['record' => $driver->getRouteKey()])
+            ->fillForm(['is_active' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertFalse($driver->refresh()->is_active);
+        $this->assertSame(OfferStatus::Withdrawn, $offer->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'offer.withdrawn_for_driver',
+            'auditable_id' => $driver->id,
+            'user_id' => $admin->id,
+        ]);
+
+        $offer->forceFill(['status' => OfferStatus::Pending])->save();
+
+        Livewire::test(ViewOrder::class, ['record' => $order->getRouteKey()])
+            ->callAction('assignOffer', data: ['offer_id' => $offer->id]);
+
+        $this->assertSame(OrderStatus::OpenForOffers, $order->fresh()->status);
+        $this->assertNull($order->fresh()->assigned_driver_id);
+        $this->assertSame(OfferStatus::Pending, $offer->fresh()->status);
     }
 }

@@ -283,4 +283,32 @@ class ShipperPanelTest extends TestCase
         $this->assertNotNull($component->get('errorMessage'));
         $this->assertDatabaseCount('reviews', 0);
     }
+
+    public function test_offers_of_ineligible_drivers_are_hidden_and_cannot_be_accepted(): void
+    {
+        $shipper = User::factory()->shipper()->create();
+        $order = Order::factory()->openForOffers()->create(['shipper_id' => $shipper->id]);
+        $eligible = $this->approvedDriver();
+        $eligible->forceFill(['name' => 'راننده فعال'])->save();
+        $inactive = $this->approvedDriver();
+        $inactive->forceFill(['name' => 'راننده غیرفعال', 'is_active' => false])->save();
+        $unverified = $this->pendingDriver();
+        $unverified->forceFill(['name' => 'راننده تأییدنشده'])->save();
+
+        Offer::factory()->create(['order_id' => $order->id, 'driver_id' => $eligible->id]);
+        $inactiveOffer = Offer::factory()->create(['order_id' => $order->id, 'driver_id' => $inactive->id]);
+        Offer::factory()->create(['order_id' => $order->id, 'driver_id' => $unverified->id]);
+
+        $component = Livewire::actingAs($shipper)
+            ->test(OrderShow::class, ['order' => $order])
+            ->assertSee('راننده فعال')
+            ->assertDontSee('راننده غیرفعال')
+            ->assertDontSee('راننده تأییدنشده');
+
+        $component->call('acceptOffer', $inactiveOffer->id);
+
+        $this->assertNotNull($component->get('errorMessage'));
+        $this->assertSame(OrderStatus::OpenForOffers, $order->fresh()->status);
+        $this->assertSame(OfferStatus::Pending, $inactiveOffer->fresh()->status);
+    }
 }

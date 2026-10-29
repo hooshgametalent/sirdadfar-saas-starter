@@ -85,6 +85,14 @@ class OrderLifecycle
                 throw FreightException::because('این پیشنهاد دیگر قابل پذیرش نیست.');
             }
 
+            // The driver may have been deactivated or rejected after the
+            // offer was submitted, so check their current state under lock.
+            $driver = User::query()->with('driverProfile')->whereKey($offer->driver_id)->lockForUpdate()->first();
+
+            if ($driver === null || ! $driver->is_active || ! $driver->isVerifiedDriver()) {
+                throw FreightException::because('راننده این پیشنهاد در حال حاضر فعال یا تأیید شده نیست و پیشنهاد قابل پذیرش نیست.');
+            }
+
             $offer->status = OfferStatus::Accepted;
             $offer->save();
 

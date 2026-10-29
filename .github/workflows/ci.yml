@@ -58,9 +58,6 @@ jobs:
           path: package-lock.json
           retention-days: 14
 
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
-
       - name: Lint
         run: npm run lint
 
@@ -72,6 +69,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Runs after build so a newly published advisory does not hide lint,
+      # typecheck, format or build results. Still a failing gate.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
   docker:
     name: Docker build and smoke test

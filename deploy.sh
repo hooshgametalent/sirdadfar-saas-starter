@@ -65,9 +65,16 @@ install_docker() {
     log "Docker is already installed: $(docker --version)"
   else
     log "Installing Docker Engine (get.docker.com)..."
-    curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
-    as_root sh /tmp/get-docker.sh
-    rm -f /tmp/get-docker.sh
+    if curl -fsSL https://get.docker.com -o /tmp/get-docker.sh; then
+      as_root sh /tmp/get-docker.sh
+      rm -f /tmp/get-docker.sh
+    else
+      # get.docker.com may be blocked (e.g. some Iranian servers): use the distro packages.
+      warn "get.docker.com is not reachable. Installing docker.io from the OS apt repository..."
+      command -v apt-get >/dev/null 2>&1 || die "Install Docker manually."
+      as_root apt-get update -y
+      as_root apt-get install -y docker.io
+    fi
     as_root systemctl enable --now docker >/dev/null 2>&1 || true
   fi
 
@@ -75,7 +82,12 @@ install_docker() {
     log "Installing docker compose plugin..."
     command -v apt-get >/dev/null 2>&1 || die "Install the docker compose plugin manually."
     as_root apt-get update -y
-    as_root apt-get install -y docker-compose-plugin
+    # docker-compose-plugin comes from Docker's apt repo (get.docker.com),
+    # docker-compose-v2 from Ubuntu's own repo (used together with docker.io).
+    as_root apt-get install -y docker-compose-plugin ||
+      as_root apt-get install -y docker-compose-v2 ||
+      die "Could not install Docker Compose v2. Install docker-compose-plugin or docker-compose-v2 manually."
+    as_root docker compose version >/dev/null 2>&1 || die "'docker compose' is still not available."
   fi
 }
 
@@ -136,7 +148,8 @@ wait_for_health() {
 up() {
   log "Building image and starting containers..."
   compose up -d --build --remove-orphans
-  as_root docker image prune -f >/dev/null 2>&1 || true
+  # Remove only this project's old (dangling) images, never other projects' images.
+  as_root docker image prune -f --filter "label=app.sirdadfar.project=sirdadfar-saas-starter" >/dev/null 2>&1 || true
   wait_for_health
 }
 

@@ -19,6 +19,8 @@ RUN npm run build && mkdir -p public
 
 # 3) Minimal runtime image
 FROM node:22-alpine AS runner
+# Used by deploy.sh to prune only this project's old images
+LABEL app.sirdadfar.project="sirdadfar-saas-starter"
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

@@ -116,9 +116,11 @@ cd /opt/sirdadfar-saas-starter
 
 ### قدم ۳: ساخت فایل تنظیمات
 
+پوشه `/opt/sirdadfar-saas-starter` متعلق به root است، پس این دستورها هم با `sudo` اجرا می‌شوند (اگر با کاربر root وارد شده‌اید، `sudo` لازم نیست):
+
 ```bash
-cp .env.example .env
-nano .env   # در صورت نیاز APP_PORT را تغییر دهید
+sudo cp .env.example .env
+sudo nano .env   # در صورت نیاز APP_PORT را تغییر دهید
 ```
 
 ### قدم ۴: ساخت و اجرا
@@ -139,8 +141,8 @@ curl -I http://127.0.0.1:3000/
 ### اجرا فقط با Docker (بدون Compose)
 
 ```bash
-docker build -t sirdadfar-saas-starter .
-docker run -d --name sirdadfar-web --restart unless-stopped -p 3000:3000 sirdadfar-saas-starter
+sudo docker build -t sirdadfar-saas-starter .
+sudo docker run -d --name sirdadfar-web --restart unless-stopped -p 3000:3000 sirdadfar-saas-starter
 ```
 
 ## روش ج: اجرا بدون Docker
@@ -153,33 +155,50 @@ sudo apt-get install -y nodejs
 node -v   # باید v22 یا بالاتر باشد (حداقل 20.9)
 ```
 
-### قدم ۲: دریافت کد، نصب وابستگی‌ها و build
+### قدم ۲: دریافت کد در مسیر `/opt` و واگذاری مالکیت به کاربر خودتان
+
+کد در همان مسیری قرار می‌گیرد که سرویس systemd در ادامه از آن استفاده می‌کند. مالکیت پوشه به کاربر فعلی داده می‌شود تا `npm` و `git` بدون `sudo` کار کنند:
 
 ```bash
-git clone https://github.com/hooshgametalent/sirdadfar-saas-starter.git
-cd sirdadfar-saas-starter
+sudo git clone https://github.com/hooshgametalent/sirdadfar-saas-starter.git /opt/sirdadfar-saas-starter
+sudo chown -R "$USER":"$USER" /opt/sirdadfar-saas-starter
+cd /opt/sirdadfar-saas-starter
+```
+
+### قدم ۳: نصب وابستگی‌ها و build
+
+```bash
 npm install
 npm run build
 ```
 
-### قدم ۳: اجرا
+### قدم ۴: آماده‌سازی خروجی standalone
+
+در `next.config.ts` گزینه `output: "standalone"` فعال است. در این حالت Next.js یک سرور مستقل در `.next/standalone/server.js` می‌سازد و دستور `npm start` (یعنی `next start`) برای این حالت مناسب نیست و هشدار می‌دهد. فایل‌های ثابت باید کنار سرور مستقل کپی شوند (این کار را بعد از هر build تکرار کنید):
 
 ```bash
-PORT=3000 npm start
+cp -r .next/static .next/standalone/.next/
+[ -d public ] && cp -r public .next/standalone/ || true
+```
+
+### قدم ۵: اجرا
+
+```bash
+PORT=3000 HOSTNAME=0.0.0.0 NODE_ENV=production node .next/standalone/server.js
 ```
 
 ### اجرای دائمی با pm2 (اختیاری)
 
 ```bash
 sudo npm install -g pm2
-pm2 start npm --name sirdadfar -- start
+PORT=3000 HOSTNAME=0.0.0.0 NODE_ENV=production pm2 start .next/standalone/server.js --name sirdadfar
 pm2 save
 pm2 startup   # دستوری که چاپ می‌شود را اجرا کنید تا پس از ری‌استارت سرور هم اجرا شود
 ```
 
 ### اجرای دائمی با systemd (اختیاری)
 
-فایل `/etc/systemd/system/sirdadfar.service` را بسازید:
+فایل `/etc/systemd/system/sirdadfar.service` را بسازید و به جای `YOUR_USER` نام کاربری را بگذارید که در قدم ۲ مالک پوشه شد (خروجی دستور `whoami`):
 
 ```ini
 [Unit]
@@ -190,9 +209,10 @@ After=network.target
 WorkingDirectory=/opt/sirdadfar-saas-starter
 Environment=NODE_ENV=production
 Environment=PORT=3000
-ExecStart=/usr/bin/npm start
+Environment=HOSTNAME=0.0.0.0
+ExecStart=/usr/bin/node .next/standalone/server.js
 Restart=always
-User=www-data
+User=YOUR_USER
 
 [Install]
 WantedBy=multi-user.target
@@ -216,7 +236,17 @@ sudo git pull
 sudo docker compose up -d --build
 ```
 
-- بدون Docker: `git pull && npm install && npm run build` و سپس ری‌استارت (`pm2 restart sirdadfar` یا `sudo systemctl restart sirdadfar`).
+- بدون Docker:
+
+```bash
+cd /opt/sirdadfar-saas-starter
+git pull
+npm install
+npm run build
+cp -r .next/static .next/standalone/.next/
+[ -d public ] && cp -r public .next/standalone/ || true
+pm2 restart sirdadfar   # یا: sudo systemctl restart sirdadfar
+```
 
 ## مشاهده لاگ‌ها و وضعیت
 
@@ -306,7 +336,7 @@ sudo certbot --nginx -d example.com
 
   برای build داخل Docker می‌توانید یک فایل `.npmrc` با همین مقدار کنار `package.json` قرار دهید.
 
-- **نصب Docker:** اگر `get.docker.com` در دسترس نیست، Docker را از مخزن apt سیستم‌عامل نصب کنید (`sudo apt-get install -y docker.io docker-compose-v2`) یا از میرور ارائه‌دهنده سرور استفاده کنید.
+- **نصب Docker:** اگر `get.docker.com` در دسترس نیست، Docker را از مخزن apt سیستم‌عامل نصب کنید (`sudo apt-get install -y docker.io docker-compose-v2`) یا از میرور ارائه‌دهنده سرور استفاده کنید. اسکریپت `deploy.sh` هم در این حالت به صورت خودکار سراغ بسته‌های `docker.io` و `docker-compose-v2` از مخزن apt سیستم‌عامل می‌رود.
 
 - **راه جایگزین:** می‌توانید ایمیج را روی سیستمی که دسترسی آزاد دارد بسازید و به سرور منتقل کنید:
 
@@ -325,13 +355,15 @@ sudo certbot --nginx -d example.com
 
 فایل `.github/workflows/ci.yml` با هر push به هر شاخه و با هر Pull Request به صورت خودکار روی سرورهای رایگان GitHub اجرا می‌شود و این مراحل را انجام می‌دهد:
 
-1. **نصب وابستگی‌ها:** اگر `package-lock.json` وجود داشته باشد با `npm ci`، در غیر این صورت با `npm install`. در حالت دوم فایل `package-lock.json` ساخته‌شده به عنوان Artifact ذخیره می‌شود تا در صورت تمایل آن را به مخزن اضافه کنید.
-2. **بررسی کد (Lint):** `npm run lint`
-3. **بررسی نوع‌ها (TypeScript):** `npm run typecheck`
-4. **بررسی قالب‌بندی (Prettier):** `npm run format:check`
-5. **ساخت پروژه:** `npm run build`
-6. **ساخت ایمیج Docker:** اثبات اینکه پروژه روی هر سروری که Docker دارد اجرا می‌شود.
-7. **آزمون اجرا (Smoke test):** کانتینر اجرا می‌شود و صفحه‌های `/` و `/orders` باید پاسخ `200` بدهند.
+1. **نصب وابستگی‌ها:** اگر `package-lock.json` وجود داشته باشد با `npm ci`، در غیر این صورت با `npm install`. فایل `package-lock.json` به عنوان Artifact با نام `package-lock` ذخیره می‌شود و مرحله ساخت ایمیج Docker از همین فایل استفاده می‌کند، تا ایمیج دقیقا با همان نسخه‌های بررسی‌شده ساخته شود.
+   - **توصیه مهم:** تا وقتی `package-lock.json` در مخزن نیست، هر اجرای CI ممکن است نسخه‌های جدیدتری از بسته‌ها بگیرد. پس از اولین اجرای موفق، Artifact `package-lock` را از صفحه همان اجرا دانلود کنید، فایل `package-lock.json` را در ریشه پروژه قرار دهید و commit کنید.
+2. **بررسی امنیتی وابستگی‌ها:** `npm audit --omit=dev --audit-level=high` (اگر بسته‌های اجرایی آسیب‌پذیری جدی داشته باشند، CI ناموفق می‌شود)
+3. **بررسی کد (Lint):** `npm run lint`
+4. **بررسی نوع‌ها (TypeScript):** `npm run typecheck`
+5. **بررسی قالب‌بندی (Prettier):** `npm run format:check`
+6. **ساخت پروژه:** `npm run build`
+7. **ساخت ایمیج Docker:** اثبات اینکه پروژه روی هر سروری که Docker دارد اجرا می‌شود.
+8. **آزمون اجرا (Smoke test):** کانتینر اجرا می‌شود و صفحه‌های `/` و `/orders` باید پاسخ `200` بدهند.
 
 ### مشاهده نتیجه
 

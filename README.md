@@ -31,21 +31,22 @@ npm run dev
 
 ## دستورهای npm
 
-| دستور                  | کار                                |
-| ---------------------- | ---------------------------------- |
-| `npm run dev`          | اجرای محیط توسعه                   |
-| `npm run build`        | ساخت نسخه production               |
-| `npm start`            | اجرای نسخه ساخته‌شده               |
-| `npm run lint`         | بررسی کد با ESLint                 |
-| `npm run typecheck`    | بررسی نوع‌ها با TypeScript         |
-| `npm run format`       | قالب‌بندی کد با Prettier           |
-| `npm run format:check` | بررسی قالب‌بندی بدون تغییر فایل‌ها |
+| دستور                  | کار                                                              |
+| ---------------------- | ---------------------------------------------------------------- |
+| `npm run dev`          | اجرای محیط توسعه                                                 |
+| `npm run build`        | ساخت نسخه production                                             |
+| `npm start`            | اجرای محلی نسخه ساخته‌شده (برای سرور، راهنمای استقرار را ببینید) |
+| `npm run lint`         | بررسی کد با ESLint                                               |
+| `npm run typecheck`    | بررسی نوع‌ها با TypeScript                                       |
+| `npm run format`       | قالب‌بندی کد با Prettier                                         |
+| `npm run format:check` | بررسی قالب‌بندی بدون تغییر فایل‌ها                               |
 
 ## استقرار روی سرور و CI
 
 - با هر push، GitHub Actions وابستگی‌ها را نصب می‌کند، lint و typecheck و بررسی قالب‌بندی را اجرا می‌کند، پروژه را build می‌کند و یک ایمیج Docker می‌سازد و آزمایش می‌کند. نتیجه در تب [Actions](https://github.com/hooshgametalent/sirdadfar-saas-starter/actions) دیده می‌شود.
 - اجرای سریع روی سرور Ubuntu: `sudo ./deploy.sh`
 - اجرا با Docker Compose: `docker compose up -d --build`
+- پروژه با `output: "standalone"` ساخته می‌شود، پس روی سرور بدون Docker به جای `npm start` از `node .next/standalone/server.js` استفاده کنید (کپی فایل‌های ثابت در راهنمای استقرار توضیح داده شده است).
 - راهنمای کامل و قدم به قدم: [docs/DEPLOYMENT.fa.md](docs/DEPLOYMENT.fa.md)
 
 ## وضعیت این نسخه

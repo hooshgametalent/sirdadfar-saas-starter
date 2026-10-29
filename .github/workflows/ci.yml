@@ -48,13 +48,18 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: Upload generated package-lock.json
-        if: steps.install.outputs.lockfile == 'generated'
+      # The docker job builds from this exact lockfile, so the image uses the
+      # same dependency tree that passed lint, typecheck and build. When the
+      # lockfile was generated, download this artifact and commit it.
+      - name: Upload package-lock.json
         uses: actions/upload-artifact@v4
         with:
           name: package-lock
           path: package-lock.json
           retention-days: 14
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint
@@ -76,6 +81,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download package-lock.json from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: package-lock
+          path: .
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum DocumentType: string
+use Filament\Support\Contracts\HasLabel;
+
+enum DocumentType: string implements HasLabel
 {
     case NationalCard = 'national_card';
     case DrivingLicense = 'driving_license';
@@ -19,5 +21,10 @@ enum DocumentType: string
             self::SmartCard => 'کارت هوشمند راننده',
             self::Insurance => 'بیمه‌نامه',
         };
+    }
+
+    public function getLabel(): string
+    {
+        return $this->label();
     }
 }

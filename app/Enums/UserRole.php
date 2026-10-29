@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum UserRole: string
+use Filament\Support\Contracts\HasLabel;
+
+enum UserRole: string implements HasLabel
 {
     case Shipper = 'shipper';
     case Driver = 'driver';
@@ -43,5 +45,10 @@ enum UserRole: string
             self::Admin => 'مدیر کل',
             self::ContentEditor => 'ویراستار محتوا',
         };
+    }
+
+    public function getLabel(): string
+    {
+        return $this->label();
     }
 }

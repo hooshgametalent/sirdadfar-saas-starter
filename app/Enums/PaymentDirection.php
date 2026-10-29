@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum PaymentDirection: string
+use Filament\Support\Contracts\HasLabel;
+
+enum PaymentDirection: string implements HasLabel
 {
     case FromShipper = 'from_shipper';
     case ToDriver = 'to_driver';
@@ -13,5 +15,10 @@ enum PaymentDirection: string
             self::FromShipper => 'دریافت از صاحب بار',
             self::ToDriver => 'پرداخت به راننده',
         };
+    }
+
+    public function getLabel(): string
+    {
+        return $this->label();
     }
 }

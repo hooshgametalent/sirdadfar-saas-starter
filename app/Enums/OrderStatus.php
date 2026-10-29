@@ -2,7 +2,10 @@
 
 namespace App\Enums;
 
-enum OrderStatus: string
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+
+enum OrderStatus: string implements HasColor, HasLabel
 {
     case PendingReview = 'pending_review';
     case OpenForOffers = 'open_for_offers';
@@ -36,6 +39,24 @@ enum OrderStatus: string
             self::InTransit => 'در مسیر',
             self::Delivered => 'تحویل شده',
             self::Cancelled => 'لغو شده',
+        };
+    }
+
+    public function getLabel(): string
+    {
+        return $this->label();
+    }
+
+    public function getColor(): string
+    {
+        return match ($this) {
+            self::PendingReview => 'warning',
+            self::OpenForOffers => 'info',
+            self::Assigned => 'primary',
+            self::Loaded => 'primary',
+            self::InTransit => 'info',
+            self::Delivered => 'success',
+            self::Cancelled => 'danger',
         };
     }
 

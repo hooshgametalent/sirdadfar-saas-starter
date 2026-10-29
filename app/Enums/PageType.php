@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum PageType: string
+use Filament\Support\Contracts\HasLabel;
+
+enum PageType: string implements HasLabel
 {
     case Route = 'route';
     case Service = 'service';
@@ -15,5 +17,10 @@ enum PageType: string
             self::Service => 'صفحه خدمت',
             self::StaticPage => 'صفحه ثابت',
         };
+    }
+
+    public function getLabel(): string
+    {
+        return $this->label();
     }
 }

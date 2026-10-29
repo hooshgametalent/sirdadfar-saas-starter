@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\SmsSender;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Services\Sms\LogSmsSender;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -32,5 +33,13 @@ class AppServiceProvider extends ServiceProvider
         Livewire::addPersistentMiddleware([
             EnsureUserHasRole::class,
         ]);
+
+        // Trust X-Forwarded-* headers from the configured reverse proxies so
+        // URLs use https when HTTPS is terminated by nginx or Caddy.
+        $proxies = config('freight.trusted_proxies');
+
+        if (filled($proxies)) {
+            TrustProxies::at($proxies);
+        }
     }
 }

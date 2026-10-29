@@ -63,4 +63,16 @@ return [
 
     'demo_seed' => (bool) env('DEMO_SEED', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted proxies
+    |--------------------------------------------------------------------------
+    |
+    | Comma separated IPs or CIDRs (or *) of reverse proxies in front of the
+    | application, so HTTPS and client IPs from X-Forwarded-* are respected.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
 ];

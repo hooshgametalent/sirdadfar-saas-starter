@@ -435,7 +435,11 @@ class AdminPanelTest extends TestCase
             'user_id' => $admin->id,
         ]);
 
-        $offer->forceFill(['status' => OfferStatus::Pending])->save();
+        // Simulate a stale pending offer from the now inactive driver. Refresh
+        // first: the withdrawal was a query update, so the in-memory model
+        // still thinks it is pending and save() would otherwise be a no-op.
+        $offer->refresh()->forceFill(['status' => OfferStatus::Pending])->save();
+        $this->assertSame(OfferStatus::Pending, $offer->fresh()->status);
 
         Livewire::test(ViewOrder::class, ['record' => $order->getRouteKey()])
             ->callAction('assignOffer', data: ['offer_id' => $offer->id]);

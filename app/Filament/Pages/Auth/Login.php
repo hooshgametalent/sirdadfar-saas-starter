@@ -33,6 +33,8 @@ class Login extends BaseLogin
             ->tel()
             ->required()
             ->maxLength(20)
+            // Persian/Arabic digits must become ASCII before the tel() format rule runs.
+            ->mutateStateForValidationUsing(fn (?string $state): string => Mobile::normalize($state))
             ->autocomplete('username')
             ->autofocus()
             ->extraInputAttributes(['dir' => 'ltr', 'inputmode' => 'numeric']);

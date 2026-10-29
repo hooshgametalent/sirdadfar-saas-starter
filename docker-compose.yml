@@ -1,0 +1,18 @@
+services:
+  web:
+    build:
+      context: .
+    image: sirdadfar-saas-starter:latest
+    container_name: sirdadfar-web
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    # Values come from .env next to this file (read automatically by docker compose).
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

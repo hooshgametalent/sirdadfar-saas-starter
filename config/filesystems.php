@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Private files (driver documents) are only streamed through
+            // App\Http\Controllers\DriverDocumentController after authorization.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

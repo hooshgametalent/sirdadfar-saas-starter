@@ -20,6 +20,19 @@ class Order extends Model
     use HasFactory;
 
     /**
+     * Keys allowed in special_requirements with their Persian labels.
+     *
+     * @var array<string, string>
+     */
+    public const SPECIAL_REQUIREMENTS = [
+        'loading_help' => 'نیاز به کارگر بارگیری',
+        'insurance' => 'بیمه بار',
+        'fragile' => 'بار حساس یا شکستنی',
+        'covered' => 'نیاز به خودروی مسقف',
+        'refrigerated' => 'نیاز به دمای کنترل‌شده',
+    ];
+
+    /**
      * Attributes a shipper may provide when submitting an order.
      *
      * @var list<string>

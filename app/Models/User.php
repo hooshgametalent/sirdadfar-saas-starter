@@ -96,6 +96,18 @@ class User extends Authenticatable implements FilamentUser
             && $this->driverProfile?->verification_status === DriverVerificationStatus::Approved;
     }
 
+    /**
+     * Where the user lands after signing in.
+     */
+    public function homeUrl(): string
+    {
+        return match (true) {
+            $this->isShipper() => route('shipper.dashboard'),
+            $this->isDriver() => route('driver.dashboard'),
+            default => url('/admin'),
+        };
+    }
+
     public function driverProfile(): HasOne
     {
         return $this->hasOne(DriverProfile::class);

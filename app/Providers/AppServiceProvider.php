@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Contracts\SmsSender;
+use App\Http\Middleware\EnsureUserHasRole;
 use App\Services\Sms\LogSmsSender;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Re-apply the role middleware on Livewire update requests so panel
+        // components keep the same access rules as their initial page load.
+        Livewire::addPersistentMiddleware([
+            EnsureUserHasRole::class,
+        ]);
     }
 }

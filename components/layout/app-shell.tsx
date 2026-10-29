@@ -2,7 +2,15 @@ import type { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 
-export function AppShell({ children, title, description }: { children: ReactNode; title: string; description: string }) {
+export function AppShell({
+  children,
+  title,
+  description,
+}: {
+  children: ReactNode;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="app-shell">
       <Sidebar />
